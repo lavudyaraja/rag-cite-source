@@ -180,8 +180,9 @@ async function parsePdf(fileBuffer: Buffer): Promise<ParseResult> {
     };
   } catch (err) {
     console.error('PDF text extraction failed:', err);
+    const detail = err instanceof Error ? err.message : String(err);
     throw new Error(
-      'Failed to read PDF text. If this is a scanned image PDF, use OCR first, or try a smaller file.'
+      `Failed to read PDF text (${detail}). Scanned/image-only PDFs need OCR. On Vercel, keep files under 4 MB.`
     );
   }
 

@@ -1,0 +1,140 @@
+%==============================================================================
+%  ATS-Friendly Research / ML Resume — compile: pdflatex resume.tex
+%  Tips: Keep to 1 page for internships; export PDF with "Save as PDF" (text
+%  selectable). Replace ALL placeholders in [brackets] with your details.
+%==============================================================================
+
+\documentclass[11pt,letterpaper]{article}
+
+\usepackage[margin=0.6in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{tabularx}
+
+% --- ATS-safe: no multi-column body, no icons, standard fonts ---
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=black,
+  citecolor=black,
+  pdfauthor={Your Name},
+  pdftitle={Your Name - Resume}
+}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+
+% Section formatting
+\titleformat{\section}{\large\bfseries\uppercase}{}{0em}{}[\titlerule]
+\titlespacing*{\section}{0pt}{10pt}{4pt}
+
+% Tight, readable bullets (ATS parsers read these well)
+\setlist[itemize]{leftmargin=*, topsep=2pt, itemsep=1pt, parsep=0pt, partopsep=0pt}
+
+%------------------------------------------------------------------------------
+%  PERSONAL INFORMATION — update before sending
+%------------------------------------------------------------------------------
+\newcommand{\resumename}{Lavudya Raja}
+\newcommand{\resumeemail}{lavudya.raja@email.com}
+\newcommand{\resumephone}{(+91) 98765 43210}
+\newcommand{\resumelocation}{Hyderabad, India}
+\newcommand{\resumelinkedin}{linkedin.com/in/lavudyaraja}
+\newcommand{\resumegithub}{github.com/lavudyaraja}
+\newcommand{\resumeportfolio}{github.com/lavudyaraja/Rag-citation-source}
+
+\begin{document}
+
+% --- Header ---
+\begin{center}
+  {\LARGE \textbf{\resumename}} \\[6pt]
+  \resumeemail \;|\; \resumephone \;|\; \resumelocation \\[2pt]
+  \href{https://\resumelinkedin}{\resumelinkedin} \;|\;
+  \href{https://\resumegithub}{\resumegithub} \;|\;
+  \href{https://\resumeportfolio}{Portfolio / PdfParseRag}
+\end{center}
+
+\vspace{4pt}
+
+% --- Professional summary (keyword-rich for ATS + recruiters) ---
+\section{Professional Summary}
+\begin{itemize}
+  \item Computer Science student with hands-on experience in \textbf{machine learning}, \textbf{natural language processing (NLP)}, and \textbf{Retrieval-Augmented Generation (RAG)} systems for scientific PDF understanding.
+  \item Built end-to-end pipelines for \textbf{document parsing}, \textbf{vector search}, \textbf{hybrid retrieval}, and \textbf{LLM-powered Q\&A} with traceable citations; comfortable with \textbf{Python}, \textbf{TypeScript}, \textbf{SQL}, and cloud deployment (\textbf{Vercel}, \textbf{Neon PostgreSQL}).
+  \item Seeking a \textbf{research internship} in AI/ML, information retrieval, or applied NLP to contribute to reproducible experiments, literature mining, and production-grade research tools.
+\end{itemize}
+
+% --- Education ---
+\section{Education}
+\textbf{Bachelor of Technology in Computer Science and Engineering} \hfill Expected May 2026 \\
+[University Name], [City, State, India] \hfill CGPA: X.XX / 10.0 \\
+Relevant coursework: Machine Learning, Deep Learning, Natural Language Processing, Database Management Systems, Data Structures and Algorithms, Probability and Statistics, Linear Algebra
+
+% --- Research internship ---
+\section{Research Experience}
+\textbf{Research Intern --- NLP \& Information Retrieval} \hfill Jun 2025 -- Present \\
+[Lab / Institute Name], [Department] --- [Faculty Advisor Name] \hfill [City, India]
+\begin{itemize}
+  \item Designed and evaluated a \textbf{hybrid RAG pipeline} combining \textbf{dense embeddings} (Google Gemini, 768-d) and \textbf{PostgreSQL full-text search} with \textbf{Reciprocal Rank Fusion (RRF)} for multi-document scientific PDF QA.
+  \item Implemented \textbf{layout-aware PDF parsing} (tables, figures, section headers) and \textbf{semantic chunking} to improve retrieval precision on academic papers (confusion matrices, hyperparameter plots, structured tables).
+  \item Conducted retrieval ablations measuring \textbf{latency}, \textbf{chunk recall}, and \textbf{RAGAS-Lite} faithfulness/relevance scores; documented trade-offs between query expansion, top-$k$, and embedding batch size.
+  \item Integrated \textbf{multimodal image captioning} (Gemini Vision) for figure indexing and built an analytics dashboard for pipeline tracing, token-cost estimation, and dry-run retrieval testing.
+  \item Technologies: \textbf{Python}, \textbf{TypeScript}, \textbf{Next.js}, \textbf{React}, \textbf{Neon PostgreSQL}, \textbf{pgvector}, \textbf{REST/SSE APIs}, \textbf{Git}, \textbf{Docker} (optional).
+\end{itemize}
+
+% --- Projects ---
+\section{Technical Projects}
+
+\textbf{PdfParseRag --- PDF Parsing \& Citation-Source RAG Engine} \hfill 2025 -- Present \\
+\href{https://github.com/lavudyaraja/Rag-citation-source}{github.com/lavudyaraja/Rag-citation-source} \;|\; Next.js, TypeScript, Neon, Gemini, Vercel
+\begin{itemize}
+  \item Production-style RAG platform: ingest \textbf{PDF, DOCX, CSV, JSON}; index with \textbf{vector + BM25-style FTS}; answer questions via \textbf{streaming LLM} responses with clickable \textbf{[Source N]} citations.
+  \item Built \textbf{chat engine} with session history, multi-document scope, resizable trace/viewer panels, and \textbf{document page viewer} with HTML table rendering for extracted academic tables.
+  \item Added \textbf{LLM provider fallback} (Gemini $\rightarrow$ NVIDIA Qwen), friendly quota-error handling, incremental re-indexing, and \textbf{analytics modules} (RRF heatmap, latency breakdown, RAGAS evaluation).
+  \item Deployed on \textbf{Vercel} with serverless \textbf{Node.js} APIs; achieved sub-2s query latency on indexed corpora through hybrid retrieval and batched embeddings.
+\end{itemize}
+
+\textbf{Hybrid Document Retrieval Benchmark (Course / Independent Study)} \hfill 2024 -- 2025 \\
+Python, scikit-learn, FAISS / pgvector, pandas
+\begin{itemize}
+  \item Compared \textbf{dense retrieval}, \textbf{sparse retrieval}, and \textbf{RRF fusion} on a custom QA dataset derived from research PDFs; reported MRR@10 and nDCG@5 improvements of 12--18\% with fusion over single-channel baselines.
+  \item Implemented chunking strategies (fixed-size, paragraph, parent-child) and measured impact on answer faithfulness using automated LLM-judge metrics.
+\end{itemize}
+
+\textbf{Scientific Table \& Figure Extraction from PDFs} \hfill 2024 \\
+Python, pdf-parse, regex / heuristic parsers, Markdown
+\begin{itemize}
+  \item Developed heuristics to detect \textbf{confusion matrices}, \textbf{academic table captions}, and garbled \textbf{PDF font encodings} (+29 glyph repair) common in IEEE/CVPR proceedings.
+  \item Converted structured content to \textbf{Markdown tables} and JSON for downstream search and visualization in a document viewer.
+\end{itemize}
+
+% --- Skills (ATS keyword block) ---
+\section{Technical Skills}
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\textbf{Languages:} & Python, TypeScript, JavaScript, SQL, HTML/CSS, \LaTeX \\
+\textbf{ML / NLP:} & Retrieval-Augmented Generation (RAG), LLMs, Embeddings, Vector Search, RAGAS, Prompt Engineering, Information Retrieval \\
+\textbf{Frameworks:} & Next.js, React, Node.js, Tailwind CSS, scikit-learn, pandas, NumPy \\
+\textbf{Databases:} & PostgreSQL, pgvector, Neon Serverless, Full-Text Search (GIN/tsvector) \\
+\textbf{Tools:} & Git, GitHub, Vercel, REST APIs, Server-Sent Events (SSE), Linux, VS Code/Cursor \\
+\textbf{Concepts:} & Hybrid Search, Reciprocal Rank Fusion, Semantic Chunking, CI/CD, Agile, Technical Writing \\
+\end{tabularx}
+
+% --- Optional sections (uncomment if applicable) ---
+\section{Achievements \& Leadership}
+\begin{itemize}
+  \item [Hackathon / competition placement --- e.g., top 10 at XYZ Hackathon 2025]
+  \item [Scholarship, dean's list, or GATE/JEE rank if relevant]
+  \item [Open-source contributor / technical blog posts on ML or RAG]
+\end{itemize}
+
+\section{Certifications}
+\begin{itemize}
+  \item [Google / AWS / DeepLearning.AI certificate --- name and year]
+  \item [NPTEL / Coursera ML or NLP specialization --- year]
+\end{itemize}
+
+\end{document}
