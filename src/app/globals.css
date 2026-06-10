@@ -1,0 +1,127 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* InsightRAG — aligned with landing / auth */
+  --background: #08080C;
+  --foreground: #EEEEF2;
+
+  --card: #0F0F16;
+  --card-foreground: #EEEEF2;
+
+  --popover: #0F0F16;
+  --popover-foreground: #EEEEF2;
+
+  --primary: #E6990A;
+  --primary-foreground: #08080C;
+
+  --secondary: #111120;
+  --secondary-foreground: #EEEEF2;
+
+  --muted: #111120;
+  --muted-foreground: #7A7A96;
+
+  --accent: #1C1200;
+  --accent-foreground: #E6990A;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #EEEEF2;
+
+  --border: #1C1C28;
+  --input: #1C1C28;
+  --ring: #E6990A;
+
+  --radius: 0.75rem;
+
+  --chart-1: #E6990A;
+  --chart-2: #7A5FC0;
+  --chart-3: #1DB875;
+  --chart-4: #38BDF8;
+  --chart-5: #ef4444;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* Custom UI Utilities */
+.glass-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.25);
+}
+
+.glass-panel-interactive {
+  @apply transition-all duration-300;
+}
+.glass-panel-interactive:hover {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+
+.glow-text {
+  /* kept for compat — no glow, landing style */
+}
+
+.glow-border {
+  border-color: color-mix(in srgb, var(--primary) 50%, var(--border));
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #08080C;
+}
+::-webkit-scrollbar-thumb {
+  background: #1C1C28;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3C3C54;
+}
