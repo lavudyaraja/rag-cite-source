@@ -1,5 +1,5 @@
-import { PDFParse } from 'pdf-parse';
 import mammoth from 'mammoth';
+import { extractPdfImages, extractPdfTables, extractPdfText } from './pdf-extract';
 import {
   detectTextTables,
   extractTablesFromHtml,
@@ -23,6 +23,7 @@ import {
   hashContent,
   splitIntoParagraphs,
 } from './semantic-chunking';
+import { repairPdfText } from './pdf-text-repair';
 
 export interface FileChunkMetadata {
   header?: string | null;
@@ -39,6 +40,7 @@ export interface FileChunkMetadata {
   tableIndex?: number;
   tableMarkdown?: string;
   tableJson?: string;
+  sectionTitle?: string;
   imageIndex?: number;
   imageMimeType?: string;
   imageWidth?: number;
@@ -56,6 +58,7 @@ export interface ParseResult {
   chunks: FileChunk[];
   tablesExtracted: number;
   imagesCaptioned: number;
+  extractedImages: ExtractedImage[];
 }
 
 /**
@@ -82,12 +85,6 @@ export async function parseAndChunkFile(
     default:
       throw new Error(`Unsupported file type: .${extension}`);
   }
-}
-
-function createPdfParser(fileBuffer: Buffer): PDFParse {
-  const uint8Array = new Uint8Array(fileBuffer.byteLength);
-  uint8Array.set(fileBuffer);
-  return new PDFParse({ data: uint8Array });
 }
 
 function buildTableChunks(
@@ -170,21 +167,33 @@ async function buildImageCaptionChunks(
  * Parses PDF documents with layout-aware text, table, and image extraction.
  */
 async function parsePdf(fileBuffer: Buffer): Promise<ParseResult> {
-  const parser = createPdfParser(fileBuffer);
+  let textResult;
+  try {
+    textResult = await extractPdfText(fileBuffer);
+    textResult = {
+      ...textResult,
+      pages: textResult.pages.map((page) => ({
+        ...page,
+        text: repairPdfText(page.text),
+      })),
+      text: repairPdfText(textResult.text),
+    };
+  } catch (err) {
+    console.error('PDF text extraction failed:', err);
+    throw new Error(
+      'Failed to read PDF text. If this is a scanned image PDF, use OCR first, or try a smaller file.'
+    );
+  }
 
-  const [textResult, tableResult, imageResult] = await Promise.all([
-    parser.getText(),
-    parser.getTable().catch((err) => {
-      console.warn('PDF table extraction failed:', err);
-      return null;
-    }),
-    parser.getImage({ imageBuffer: true, imageThreshold: 20 }).catch((err) => {
-      console.warn('PDF image extraction failed:', err);
-      return null;
-    }),
-  ]);
+  const tableResult = await extractPdfTables(fileBuffer).catch((err) => {
+    console.warn('PDF table extraction failed:', err);
+    return null;
+  });
 
-  await parser.destroy().catch(() => {});
+  const imageResult = await extractPdfImages(fileBuffer).catch((err) => {
+    console.warn('PDF image extraction failed:', err);
+    return null;
+  });
 
   const textChunks = extractPdfTextChunks(textResult.pages);
 
@@ -243,10 +252,13 @@ async function parsePdf(fileBuffer: Buffer): Promise<ParseResult> {
 
   const { chunks: imageChunks } = await buildImageCaptionChunks(extractedImages, nextIndex);
 
+  const limitedImages = limitImages(extractedImages);
+
   return {
     chunks: [...textChunks, ...tableChunks, ...imageChunks],
     tablesExtracted: tableEntries.length,
-    imagesCaptioned: Math.min(extractedImages.length, limitImages(extractedImages).length),
+    imagesCaptioned: Math.min(extractedImages.length, limitedImages.length),
+    extractedImages: limitedImages,
   };
 }
 
@@ -373,10 +385,13 @@ async function parseDocx(fileBuffer: Buffer): Promise<ParseResult> {
 
   const { chunks: imageChunks } = await buildImageCaptionChunks(extractedImages, nextIndex);
 
+  const limitedImages = limitImages(extractedImages);
+
   return {
     chunks: [...textChunks, ...tableChunks, ...imageChunks],
     tablesExtracted: htmlTables.length,
-    imagesCaptioned: Math.min(extractedImages.length, limitImages(extractedImages).length),
+    imagesCaptioned: Math.min(extractedImages.length, limitedImages.length),
+    extractedImages: limitedImages,
   };
 }
 
@@ -414,6 +429,7 @@ async function parseText(fileBuffer: Buffer): Promise<ParseResult> {
     chunks: [...textChunks, ...tableChunks],
     tablesExtracted: detectedTables.length,
     imagesCaptioned: 0,
+    extractedImages: [],
   };
 }
 
@@ -425,7 +441,7 @@ async function parseCsv(fileBuffer: Buffer): Promise<ParseResult> {
   const lines = csvText.split(/\r?\n/).filter((l) => l.trim());
 
   if (lines.length === 0) {
-    return { chunks: [], tablesExtracted: 0, imagesCaptioned: 0 };
+    return { chunks: [], tablesExtracted: 0, imagesCaptioned: 0, extractedImages: [] };
   }
 
   const table: TableData = lines.map((line) =>
@@ -470,6 +486,7 @@ async function parseCsv(fileBuffer: Buffer): Promise<ParseResult> {
     chunks: [tableChunk, ...rowChunks],
     tablesExtracted: 1,
     imagesCaptioned: 0,
+    extractedImages: [],
   };
 }
 
@@ -497,6 +514,7 @@ async function parseJson(fileBuffer: Buffer): Promise<ParseResult> {
     chunks: chunkGenericText(formattedText),
     tablesExtracted: 0,
     imagesCaptioned: 0,
+    extractedImages: [],
   };
 }
 

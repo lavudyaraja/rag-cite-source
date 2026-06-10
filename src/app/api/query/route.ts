@@ -566,7 +566,34 @@ Question: ${query}`;
       )
       .join('\n\n');
 
-    const prompt = `Answer the user's question based strictly on the context provided below. If the answer cannot be found in the context, explain what related information IS available and suggest how the user might rephrase their question. Never say "I don't know based on the documents" — be helpful and specific. Always cite your sources using [Source 1], [Source 2], etc., when referring to information.
+    const isDocumentOverview =
+      /\b(summarize|summary|explain|overview|what is this (paper|document|pdf) about|describe (the |this )?document)\b/i.test(
+        query
+      );
+
+    const prompt = isDocumentOverview
+      ? `You are explaining a document to the user. Use ONLY the context below.
+
+Structure your answer:
+1. **Document overview** — topic, purpose, and main contribution (2-4 sentences)
+2. **Key sections** — mention section/table/figure titles if present in context
+3. **Important findings** — data, metrics, tables, or figures with values when available
+4. **Citations** — cite every claim with [Source N] matching the context labels exactly
+
+If tables or figures are described in context, summarize them clearly (rows, columns, trends).
+If the answer is partial, say what IS in the context and what is missing.
+
+Context:
+${contextText}
+
+Question: ${query}`
+      : `Answer the user's question using ONLY the context below.
+
+Rules:
+- Cite sources as [Source 1], [Source 2], etc. — numbers must match the context blocks exactly
+- When referencing tables/figures, name them (e.g. "Table 1", "Figure 2") if they appear in context
+- Quote or paraphrase specific numbers and section titles from the context
+- If the exact answer is not in context, explain what related information IS available
 
 Context:
 ${contextText}
@@ -621,7 +648,7 @@ Question: ${query}`;
           for await (const chunk of streamChatCompletion({
             prompt,
             systemInstruction:
-              'You are PdfParseRag, an advanced AI research assistant. Provide clear, accurate answers citing source brackets like [Source 1]. Stay concise.',
+              'You are PdfParseRag, a research document assistant. Always cite [Source N] exactly as labeled in context. Explain papers clearly: sections, tables, figures, and metrics. Never invent citations or data not in context.',
           })) {
             llmProvider = chunk.provider;
             fullAnswer += chunk.text;

@@ -19,6 +19,7 @@ import {
   tableToMarkdown,
   type TableData,
 } from '@/lib/table-extraction';
+import { repairPdfText } from '@/lib/pdf-text-repair';
 
 interface DocumentViewerProps {
   activeDocId: string | null;
@@ -38,6 +39,7 @@ interface ChunkData {
     contentType?: 'text' | 'table' | 'image_caption';
     tableMarkdown?: string;
     tableJson?: string;
+    sectionTitle?: string;
     imageIndex?: number;
   };
 }
@@ -48,6 +50,9 @@ interface PageContentBlock {
   tableMarkdown?: string;
   tableJson?: string;
   tableRows?: TableData;
+  sectionTitle?: string;
+  imagePage?: number;
+  imageIndex?: number;
 }
 
 function normalizeMetadata(raw: unknown): ChunkData['metadata'] | undefined {
@@ -69,7 +74,15 @@ function resolveBlocksFromChunk(chunk: ChunkData): PageContentBlock[] {
   let tableJson = meta?.tableJson;
 
   if (contentType === 'image_caption') {
-    return [{ content: chunk.content, contentType, tableMarkdown, tableJson }];
+    return [{
+      content: chunk.content,
+      contentType,
+      tableMarkdown,
+      tableJson,
+      sectionTitle: meta?.sectionTitle,
+      imagePage: chunk.page_number,
+      imageIndex: meta?.imageIndex ?? 0,
+    }];
   }
 
   if (!tableMarkdown && /\[(Structured Table|Table)\b/i.test(chunk.content)) {
@@ -87,7 +100,11 @@ function resolveBlocksFromChunk(chunk: ChunkData): PageContentBlock[] {
 
   const segments = segmentTextWithTables(chunk.content);
   if (segments.length === 1 && segments[0].kind === 'text') {
-    return [{ content: segments[0].text, contentType: contentType ?? 'text' }];
+    return [{
+      content: segments[0].text,
+      contentType: contentType ?? 'text',
+      sectionTitle: meta?.sectionTitle,
+    }];
   }
 
   return segments.map((segment) => {
@@ -97,9 +114,14 @@ function resolveBlocksFromChunk(chunk: ChunkData): PageContentBlock[] {
         contentType: 'table' as const,
         tableMarkdown: tableToMarkdown(segment.table),
         tableRows: segment.table,
+        sectionTitle: meta?.sectionTitle,
       };
     }
-    return { content: segment.text, contentType: 'text' as const };
+    return {
+      content: segment.text,
+      contentType: 'text' as const,
+      sectionTitle: meta?.sectionTitle,
+    };
   });
 }
 
@@ -195,19 +217,53 @@ function TableBlock({
   );
 }
 
+function SectionHeading({ title }: { title: string }) {
+  const isCaption = /^(Table|Figure|Section)\s+\d+/i.test(title);
+  return (
+    <h4
+      className={`select-text font-semibold leading-snug text-foreground ${
+        isCaption ? 'text-[13px] text-primary' : 'text-sm uppercase tracking-wide text-primary/90'
+      }`}
+    >
+      {title}
+    </h4>
+  );
+}
+
+function PdfPagePreview({ docId, pageNo }: { docId: string; pageNo: number }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-border/40 bg-background">
+      <div className="border-b border-border/30 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+        Original PDF · Page {pageNo}
+      </div>
+      <iframe
+        src={`/api/documents/file?id=${docId}#page=${pageNo}`}
+        title={`PDF page ${pageNo}`}
+        className="h-[420px] w-full bg-white"
+      />
+    </div>
+  );
+}
+
 function TextBlockWithTables({ content }: { content: string }) {
-  const segments = useMemo(() => segmentTextWithTables(content), [content]);
+  const repaired = useMemo(() => repairPdfText(content), [content]);
+  const segments = useMemo(() => segmentTextWithTables(repaired), [repaired]);
+  const captionMatch = repaired.match(/^((?:Table|Figure)\s+\d+:[^\n]{0,240})/i);
 
   if (segments.length === 1 && segments[0].kind === 'text') {
     return (
-      <p className="select-text whitespace-pre-wrap text-[13px] leading-[1.75] text-foreground/90">
-        {segments[0].text}
-      </p>
+      <div className="space-y-2">
+        {captionMatch && <SectionHeading title={captionMatch[1]} />}
+        <p className="select-text whitespace-pre-wrap text-[13px] leading-[1.75] text-foreground/90">
+          {segments[0].text}
+        </p>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      {captionMatch && <SectionHeading title={captionMatch[1]} />}
       {segments.map((segment, idx) =>
         segment.kind === 'table' ? (
           <TableBlock
@@ -442,11 +498,23 @@ export default function DocumentViewer({
 
                         <div className="space-y-4">
                           {contents.map((block, idx) => {
+                            const sectionHeading = block.sectionTitle &&
+                              !block.content.startsWith(block.sectionTitle)
+                              ? block.sectionTitle
+                              : null;
+
                             const isTable =
                               block.contentType === 'table' ||
                               Boolean(block.tableMarkdown) ||
                               Boolean(block.tableRows) ||
                               /\[Structured Table/i.test(block.content);
+
+                            const wrap = (node: React.ReactNode) => (
+                              <div key={idx} className="space-y-2">
+                                {sectionHeading && <SectionHeading title={sectionHeading} />}
+                                {node}
+                              </div>
+                            );
 
                             if (isTable) {
                               const tableMarkdown =
@@ -456,9 +524,8 @@ export default function DocumentViewer({
                                 block.tableJson ??
                                 extractTableFromChunkContent(block.content)?.json;
                               if (tableMarkdown || block.tableRows) {
-                                return (
+                                return wrap(
                                   <TableBlock
-                                    key={idx}
                                     label={block.tableRows ? 'Detected Table' : 'Structured Table'}
                                     markdown={tableMarkdown}
                                     tableJson={tableJson}
@@ -469,25 +536,43 @@ export default function DocumentViewer({
                             }
 
                             if (block.contentType === 'image_caption') {
-                              return (
-                                <div
-                                  key={idx}
-                                  className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3"
-                                >
+                              const caption = block.content.replace(/^\[Image Caption[^\]]*\]\s*/i, '');
+                              const imageSrc =
+                                activeDocId && block.imageIndex !== undefined
+                                  ? `/api/documents/image?id=${activeDocId}&page=${block.imagePage ?? pageNo}&index=${block.imageIndex}`
+                                  : null;
+                              return wrap(
+                                <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3">
                                   <div className="mb-2 flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-violet-600">
                                     <Image className="h-3 w-3" />
-                                    Image Caption
+                                    Figure / Image
                                   </div>
+                                  {imageSrc && (
+                                    <img
+                                      src={imageSrc}
+                                      alt={`Page ${pageNo} figure`}
+                                      className="mb-3 max-h-80 w-full rounded-md border border-border/30 object-contain bg-white"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                      }}
+                                    />
+                                  )}
                                   <p className="select-text text-[13px] leading-[1.75] text-foreground/90">
-                                    {block.content.replace(/^\[Image Caption[^\]]*\]\s*/i, '')}
+                                    {caption}
                                   </p>
                                 </div>
                               );
                             }
 
-                            return <TextBlockWithTables key={idx} content={block.content} />;
+                            return wrap(<TextBlockWithTables content={block.content} />);
                           })}
                         </div>
+
+                        {isPdf && activeDocId && (
+                          <div className="mt-5">
+                            <PdfPagePreview docId={activeDocId} pageNo={pageNo} />
+                          </div>
+                        )}
 
                         {footer && (
                           <div

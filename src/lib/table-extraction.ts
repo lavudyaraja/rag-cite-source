@@ -1,3 +1,5 @@
+import { repairPdfText } from './pdf-text-repair';
+
 export type TableData = string[][];
 
 /**
@@ -292,11 +294,52 @@ export function tryParseInlineNumericGrid(text: string): {
 }
 
 /**
+ * Parses academic "Table N:" blocks with pipe or whitespace-separated rows.
+ */
+export function tryParseAcademicTableBlock(text: string): {
+  caption: string;
+  table: TableData;
+  after: string;
+} | null {
+  const match = text.match(
+    /^(Table\s+\d+:[^\n]+)([\s\S]*?)(?=(?:Figure\s+\d+:|Table\s+\d+:|$))/i
+  );
+  if (!match) return null;
+
+  const caption = match[1].trim();
+  const body = match[2].trim();
+  if (!body) return null;
+
+  const lines = body.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const parsed = detectTextTables(lines);
+  if (parsed.length > 0) {
+    return { caption, table: parsed[0], after: body.slice(body.indexOf(lines[lines.length - 1]) + lines[lines.length - 1].length).trim() };
+  }
+
+  const inlineGrid = tryParseInlineNumericGrid(body);
+  if (inlineGrid) {
+    return { caption, table: inlineGrid.table, after: inlineGrid.after };
+  }
+
+  return null;
+}
+
+/**
  * Splits mixed prose + table content for viewer display and ingest.
  */
 export function segmentTextWithTables(text: string): ContentSegment[] {
-  const trimmed = text.trim();
+  const trimmed = repairPdfText(text.trim());
   if (!trimmed) return [];
+
+  const academic = tryParseAcademicTableBlock(trimmed);
+  if (academic) {
+    const segments: ContentSegment[] = [
+      { kind: 'text', text: academic.caption },
+      { kind: 'table', table: academic.table },
+    ];
+    if (academic.after) segments.push({ kind: 'text', text: academic.after });
+    return segments;
+  }
 
   const confusion = tryParseConfusionMatrix(trimmed);
   if (confusion) {

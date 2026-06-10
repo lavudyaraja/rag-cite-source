@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { extractSectionTitle } from './pdf-text-repair';
 
 const SECTION_MAX_CHARS = 2800;
 const CHILD_MAX_CHARS = 500;
@@ -175,6 +176,7 @@ export interface SemanticChunkOutput {
     childIndex: number;
     contentHash: string;
     semanticChunking: true;
+    sectionTitle?: string;
     header?: string | null;
     footer?: string | null;
     isLayoutAware?: boolean;
@@ -194,6 +196,7 @@ export function chunkTextSemantically(
 
   for (const section of sections) {
     const children = splitSectionIntoChildren(section);
+    const sectionTitle = extractSectionTitle(section.content);
     for (const child of children) {
       outputs.push({
         content: child.content,
@@ -207,6 +210,7 @@ export function chunkTextSemantically(
           childIndex: child.childIndex,
           contentHash: child.contentHash,
           semanticChunking: true,
+          sectionTitle,
           header: layoutMeta?.header,
           footer: layoutMeta?.footer,
           isLayoutAware: layoutMeta?.isLayoutAware,

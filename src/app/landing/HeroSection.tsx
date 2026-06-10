@@ -88,7 +88,7 @@ export default function HeroSection() {
 
   useEffect(() => {
     if (!showAnswer || typedIdx >= AI_ANSWER.length) return;
-    const t = setTimeout(() => setTypedIdx(i => i + 1), 16 + Math.random() * 10);
+    const t = setTimeout(() => setTypedIdx(i => i + 1), 22);
     return () => clearTimeout(t);
   }, [showAnswer, typedIdx]);
 

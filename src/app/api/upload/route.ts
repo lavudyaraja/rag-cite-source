@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+
+export const runtime = 'nodejs';
+export const maxDuration = 60;
 import { sql } from '@/lib/db';
 import { ensureDocumentSchema } from '@/lib/db-schema';
 import { generateDocumentCatalog } from '@/lib/document-catalog';
 import { parseAndChunkFile } from '@/lib/parser';
+import { saveDocumentImages } from '@/lib/document-assets';
 import { getEmbeddingsBatch } from '@/lib/gemini';
 import fs from 'fs';
 import path from 'path';
@@ -120,10 +124,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const MAX_FILE_SIZE = 20 * 1024 * 1024;
-    if (file.size > MAX_FILE_SIZE) {
+    const maxFileSize = process.env.VERCEL
+      ? 4 * 1024 * 1024
+      : 20 * 1024 * 1024;
+    if (file.size > maxFileSize) {
       return NextResponse.json(
-        { success: false, error: 'File size exceeds the 20 MB limit' },
+        {
+          success: false,
+          error: process.env.VERCEL
+            ? 'File exceeds the 4 MB limit on Vercel. Compress the PDF or upgrade your plan.'
+            : 'File size exceeds the 20 MB limit',
+        },
         { status: 400 }
       );
     }
@@ -150,7 +161,8 @@ export async function POST(request: Request) {
       });
     }
 
-    const { chunks, tablesExtracted, imagesCaptioned } = await parseAndChunkFile(buffer, file.name);
+    const { chunks, tablesExtracted, imagesCaptioned, extractedImages } =
+      await parseAndChunkFile(buffer, file.name);
 
     if (chunks.length === 0) {
       return NextResponse.json(
@@ -253,6 +265,9 @@ export async function POST(request: Request) {
       }
       const filePath = path.join(uploadsDir, `${docId}.${extension}`);
       fs.writeFileSync(filePath, buffer);
+      if (extractedImages.length > 0) {
+        saveDocumentImages(docId, extractedImages);
+      }
     } catch (fsErr) {
       console.error('Failed to save file to public disk:', fsErr);
     }
