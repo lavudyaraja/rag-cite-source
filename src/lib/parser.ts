@@ -1,5 +1,5 @@
 import mammoth from 'mammoth';
-import { extractPdfImages, extractPdfTables, extractPdfText } from './pdf-extract';
+import { extractPdfEmbeddedImages, extractPdfTables, extractPdfText } from './pdf-extract';
 import {
   detectTextTables,
   extractTablesFromHtml,
@@ -191,9 +191,9 @@ async function parsePdf(fileBuffer: Buffer): Promise<ParseResult> {
     return null;
   });
 
-  const imageResult = await extractPdfImages(fileBuffer).catch((err) => {
+  const embeddedImages = await extractPdfEmbeddedImages(fileBuffer).catch((err) => {
     console.warn('PDF image extraction failed:', err);
-    return null;
+    return [] as ExtractedImage[];
   });
 
   const textChunks = extractPdfTextChunks(textResult.pages);
@@ -228,24 +228,7 @@ async function parsePdf(fileBuffer: Buffer): Promise<ParseResult> {
     }
   }
 
-  const extractedImages: ExtractedImage[] = [];
-  if (imageResult?.pages) {
-    let globalImageIndex = 0;
-    for (const page of imageResult.pages) {
-      for (const img of page.images) {
-        if (!img.data || img.data.length === 0) continue;
-        extractedImages.push({
-          buffer: Buffer.from(img.data),
-          mimeType: detectImageMimeType(img.data),
-          pageNumber: page.pageNumber,
-          imageIndex: globalImageIndex++,
-          width: img.width,
-          height: img.height,
-          name: img.name,
-        });
-      }
-    }
-  }
+  const extractedImages: ExtractedImage[] = embeddedImages;
 
   let nextIndex = textChunks.length;
   const { chunks: tableChunks } = buildTableChunks(tableEntries, nextIndex);

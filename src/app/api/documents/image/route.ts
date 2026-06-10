@@ -1,6 +1,6 @@
 import fs from 'fs';
 import { NextResponse } from 'next/server';
-import { resolveDocumentImagePath } from '@/lib/document-assets';
+import { listDocumentImageIndices, resolveDocumentImagePath } from '@/lib/document-assets';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -14,12 +14,26 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const page = parseInt(searchParams.get('page') || '1', 10);
-    const index = parseInt(searchParams.get('index') || '0', 10);
+    const indexParam = searchParams.get('index');
+    const listMode = searchParams.get('list') === '1' || indexParam === null;
 
     if (!id) {
       return NextResponse.json({ success: false, error: 'Document ID is required' }, { status: 400 });
     }
 
+    if (listMode) {
+      const indices = listDocumentImageIndices(id, page);
+      return NextResponse.json({
+        success: true,
+        page,
+        images: indices.map((index) => ({
+          index,
+          url: `/api/documents/image?id=${id}&page=${page}&index=${index}`,
+        })),
+      });
+    }
+
+    const index = parseInt(indexParam || '0', 10);
     const filePath = resolveDocumentImagePath(id, page, index);
     if (!filePath || !fs.existsSync(filePath)) {
       return new Response('Image not found', { status: 404 });

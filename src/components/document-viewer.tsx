@@ -230,17 +230,42 @@ function SectionHeading({ title }: { title: string }) {
   );
 }
 
-function PdfPagePreview({ docId, pageNo }: { docId: string; pageNo: number }) {
+function PageFigureGallery({ docId, pageNo }: { docId: string; pageNo: number }) {
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/documents/image?id=${docId}&page=${pageNo}&list=1`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled || !data.success) return;
+        setImageUrls((data.images || []).map((img: { url: string }) => img.url));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [docId, pageNo]);
+
+  if (imageUrls.length === 0) return null;
+
   return (
-    <div className="overflow-hidden rounded-lg border border-border/40 bg-background">
-      <div className="border-b border-border/30 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-        Original PDF · Page {pageNo}
+    <div className="mt-4 space-y-3 rounded-lg border border-violet-500/20 bg-violet-500/5 p-3">
+      <div className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-violet-600">
+        <Image className="h-3 w-3" />
+        Figures from PDF · Page {pageNo}
       </div>
-      <iframe
-        src={`/api/documents/file?id=${docId}#page=${pageNo}`}
-        title={`PDF page ${pageNo}`}
-        className="h-[420px] w-full bg-white"
-      />
+      <div className="grid gap-3">
+        {imageUrls.map((url, i) => (
+          <img
+            key={url}
+            src={url}
+            alt={`Page ${pageNo} figure ${i + 1}`}
+            className="max-h-96 w-full rounded-md border border-border/30 object-contain bg-white"
+            loading="lazy"
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -537,26 +562,12 @@ export default function DocumentViewer({
 
                             if (block.contentType === 'image_caption') {
                               const caption = block.content.replace(/^\[Image Caption[^\]]*\]\s*/i, '');
-                              const imageSrc =
-                                activeDocId && block.imageIndex !== undefined
-                                  ? `/api/documents/image?id=${activeDocId}&page=${block.imagePage ?? pageNo}&index=${block.imageIndex}`
-                                  : null;
                               return wrap(
                                 <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3">
                                   <div className="mb-2 flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-violet-600">
                                     <Image className="h-3 w-3" />
-                                    Figure / Image
+                                    Figure Caption
                                   </div>
-                                  {imageSrc && (
-                                    <img
-                                      src={imageSrc}
-                                      alt={`Page ${pageNo} figure`}
-                                      className="mb-3 max-h-80 w-full rounded-md border border-border/30 object-contain bg-white"
-                                      onError={(e) => {
-                                        (e.target as HTMLImageElement).style.display = 'none';
-                                      }}
-                                    />
-                                  )}
                                   <p className="select-text text-[13px] leading-[1.75] text-foreground/90">
                                     {caption}
                                   </p>
@@ -569,9 +580,7 @@ export default function DocumentViewer({
                         </div>
 
                         {isPdf && activeDocId && (
-                          <div className="mt-5">
-                            <PdfPagePreview docId={activeDocId} pageNo={pageNo} />
-                          </div>
+                          <PageFigureGallery docId={activeDocId} pageNo={pageNo} />
                         )}
 
                         {footer && (

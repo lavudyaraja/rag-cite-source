@@ -11,6 +11,8 @@ export async function ensureDocumentSchema(): Promise<void> {
       await sql`ALTER TABLE documents ADD COLUMN IF NOT EXISTS summary TEXT`;
       await sql`ALTER TABLE documents ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb`;
       await sql`ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_hash TEXT`;
+      await sql`ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_data_base64 TEXT`;
+      await sql`ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_extension TEXT`;
     })();
   }
   return schemaReady;

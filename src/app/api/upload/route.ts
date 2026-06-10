@@ -8,9 +8,8 @@ import { ensureDocumentSchema } from '@/lib/db-schema';
 import { generateDocumentCatalog } from '@/lib/document-catalog';
 import { parseAndChunkFile } from '@/lib/parser';
 import { saveDocumentImages } from '@/lib/document-assets';
+import { saveDocumentFile } from '@/lib/document-file-store';
 import { getEmbeddingsBatch } from '@/lib/gemini';
-import fs from 'fs';
-import path from 'path';
 
 function getSectionKey(metadata: Record<string, unknown> | undefined, chunkIndex: number): string {
   if (metadata?.sectionKey && typeof metadata.sectionKey === 'string') {
@@ -258,18 +257,19 @@ export async function POST(request: Request) {
     }
 
     try {
-      const extension = file.name.split('.').pop()?.toLowerCase();
-      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-      const filePath = path.join(uploadsDir, `${docId}.${extension}`);
-      fs.writeFileSync(filePath, buffer);
+      await saveDocumentFile(docId, buffer, file.name);
       if (extractedImages.length > 0) {
         saveDocumentImages(docId, extractedImages);
       }
-    } catch (fsErr) {
-      console.error('Failed to save file to public disk:', fsErr);
+    } catch (fileErr) {
+      console.error('Failed to persist original document file:', fileErr);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Document indexed but original file could not be saved. Please try again.',
+        },
+        { status: 500 }
+      );
     }
 
     const chunkTexts = chunksToEmbed.map((c) => c.content);

@@ -38,6 +38,18 @@ export function saveDocumentImages(docId: string, images: ExtractedImage[]): num
   return saved;
 }
 
+export function listDocumentImageIndices(docId: string, pageNumber: number): number[] {
+  const dir = path.join(getUploadsRoot(), docId, 'images');
+  if (!fs.existsSync(dir)) return [];
+
+  const indices = new Set<number>();
+  for (const file of fs.readdirSync(dir)) {
+    const match = file.match(new RegExp(`^p${pageNumber}-i(\\d+)\\.`));
+    if (match) indices.add(parseInt(match[1], 10));
+  }
+  return Array.from(indices).sort((a, b) => a - b);
+}
+
 export function resolveDocumentImagePath(
   docId: string,
   pageNumber: number,
